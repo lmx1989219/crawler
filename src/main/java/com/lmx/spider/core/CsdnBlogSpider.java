@@ -1,6 +1,7 @@
 package com.lmx.spider.core;
 
 import com.google.common.collect.Lists;
+import org.apache.http.util.Asserts;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -95,7 +96,16 @@ public class CsdnBlogSpider implements PageProcessor {
         return site;
     }
 
+    /**
+     * program parameters
+     * <p>
+     * e.g:userName pwd
+     *
+     * @param args
+     */
     public static void main(String[] args) {
+        if (args.length < 2)
+            throw new RuntimeException("用户名和密码必须输入");
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
@@ -105,19 +115,19 @@ public class CsdnBlogSpider implements PageProcessor {
         });
         System.setProperty("webdriver.chrome.driver", "E:\\chromedriver\\chromedriver.exe");
         CsdnBlogSpider spiderMain = new CsdnBlogSpider();
-        spiderMain.mockLogin();
+        spiderMain.mockLogin(args[0], args[1]);
         Spider.create(spiderMain).addUrl("https://blog.csdn.net/").thread(1).run();
     }
 
-    void mockLogin() {
+    void mockLogin(String username, String pwd) {
         ChromeOptions options = new ChromeOptions();
         //开启开发者模式
         options.setExperimentalOption("excludeSwitches", Arrays.asList("enable-automation"));
         driver = new ChromeDriver(options);
         driver.get("https://passport.csdn.net/login");
         By.xpath("//*[@id=\"app\"]/div/div/div[1]/div[2]/div[5]/ul/li[2]/a").findElement(driver).click();
-        By.xpath("//*[@id=\"all\"]").findElement(driver).sendKeys("lmx1989219");
-        By.xpath("//*[@id=\"password-number\"]").findElement(driver).sendKeys("limx5201314");
+        By.xpath("//*[@id=\"all\"]").findElement(driver).sendKeys(username);
+        By.xpath("//*[@id=\"password-number\"]").findElement(driver).sendKeys(pwd);
         By.xpath("//*[@id=\"app\"]/div/div/div[1]/div[2]/div[5]/div/div[6]/div/button").findElement(driver).click();
     }
 }
