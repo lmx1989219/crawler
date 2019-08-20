@@ -21,17 +21,21 @@ webmagic+selenium实现的模拟网页事件
 sql脚本
  
     CREATE TABLE `room` (
-      `id` bigint(20) NOT NULL,
+      `id` bigint(20) NOT NULL AUTO_INCREMENT,
+      `city` varchar(255) DEFAULT NULL,
       `title` varchar(255) DEFAULT NULL,
+      `subway` varchar(255) DEFAULT NULL,
+      `village` varchar(255) DEFAULT NULL,
       `price` decimal(10,2) DEFAULT NULL,
       `area` varchar(255) DEFAULT NULL,
       `type` varchar(255) DEFAULT NULL,
       `floor` varchar(255) DEFAULT NULL,
       `image_list` text,
       `source` varchar(255) DEFAULT NULL,
-      `create_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-      `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+      `create_time` datetime DEFAULT NULL,
+      `update_time` datetime DEFAULT NULL,
       PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ) ENGINE=InnoDB AUTO_INCREMENT=6539 DEFAULT CHARSET=utf8mb4;
+    
     
 

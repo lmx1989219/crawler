@@ -50,6 +50,7 @@ public class DankeRoomSpider implements PageProcessor {
             resultItems.put("type", type.replaceAll("户型：", ""));
             resultItems.put("floor", floor.replaceAll("楼层：", ""));
             resultItems.put("imageList", imageList);
+            resultItems.put("city", page.getUrl().toString().contains("sh") ? "上海" : "北京");
             logger.info("房间标题={}, 价格={}, 户型={}, 楼层={}, 区域={}, 图片={}",
                     title, price, type.replaceAll("户型：", ""), floor.replaceAll("楼层：", ""), area, imageList);
         }
@@ -92,7 +93,7 @@ public class DankeRoomSpider implements PageProcessor {
                     rs.close();
                 } else {
                     preparedStatement = connection.prepareStatement(
-                            "insert into room(title,price,area,type,floor,image_list,create_time,village,subway,source) values(?,?,?,?,?,?,?,?,?,?)");
+                            "insert into room(title,price,area,type,floor,image_list,create_time,village,subway,source,city) values(?,?,?,?,?,?,?,?,?,?,?)");
                     preparedStatement.setString(1, title);
                     preparedStatement.setString(2, resultItems.get("price"));
                     preparedStatement.setString(3, resultItems.get("area"));
@@ -103,6 +104,7 @@ public class DankeRoomSpider implements PageProcessor {
                     preparedStatement.setString(8, title.split(" ")[1]);
                     preparedStatement.setString(9, title.split(" ")[0]);
                     preparedStatement.setString(10, "蛋壳公寓");
+                    preparedStatement.setString(11, resultItems.get("city"));
                     preparedStatement.execute();
                     preparedStatement.close();
                 }
@@ -123,7 +125,9 @@ public class DankeRoomSpider implements PageProcessor {
 
     static void startSpider() {
         List<String> urlList = Lists.newArrayList();
+        //初始化北京、上海的待爬取的房源数据
         for (int i = 1; i <= 1000; i++) {
+            urlList.add("https://www.danke.com/room/bj?page=" + i);
             urlList.add("https://www.danke.com/room/sh?page=" + i);
         }
         Spider.create(new DankeRoomSpider())
