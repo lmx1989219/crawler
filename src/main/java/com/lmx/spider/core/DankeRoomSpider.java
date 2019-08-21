@@ -1,28 +1,37 @@
 package com.lmx.spider.core;
 
+import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.io.CharStreams;
+import com.lmx.spider.core.persist.DBconsumer;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import us.codecraft.webmagic.Page;
-import us.codecraft.webmagic.ResultItems;
-import us.codecraft.webmagic.Site;
-import us.codecraft.webmagic.Spider;
+import us.codecraft.webmagic.*;
 import us.codecraft.webmagic.processor.PageProcessor;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
- * 一句话描述一下
+ * 蛋壳公寓全国房源爬取
  *
  * @author: lucas
  * @create: 2019-08-20 13:13
@@ -35,7 +44,18 @@ public class DankeRoomSpider implements PageProcessor {
     @Override
     public void process(Page page) {
         if (page.getUrl().regex("https://www.danke.com/room/(\\w+\\?page=\\d+)").match()) {
-            page.addTargetRequests(page.getHtml().regex("https://www.danke.com/room/(\\w+\\.html)").all());
+            List<String> roomUrlList = page.getHtml().regex("https://www.danke.com/room/(\\w+\\.html)").all();
+            if (CollectionUtils.isNotEmpty(roomUrlList)) {
+                roomUrlList.forEach(roomUrl -> {
+                    String url = page.getUrl().toString();
+                    Request request = new Request();
+                    request.setUrl("https://www.danke.com/room/" + roomUrl);
+                    Map ext = Maps.newHashMap();
+                    ext.put("city", url.substring(url.lastIndexOf("/") + 1, url.indexOf("?")));
+                    request.setExtras(ext);
+                    page.addTargetRequest(request);
+                });
+            }
         } else {
             ResultItems resultItems = page.getResultItems();
             List<String> imageList = page.getHtml().xpath("//*[@id=\"myCarousel\"]/div/div").css("img", "src").all();
@@ -50,7 +70,8 @@ public class DankeRoomSpider implements PageProcessor {
             resultItems.put("type", type.replaceAll("户型：", ""));
             resultItems.put("floor", floor.replaceAll("楼层：", ""));
             resultItems.put("imageList", imageList);
-            resultItems.put("city", page.getUrl().toString().contains("sh") ? "上海" : "北京");
+            resultItems.put("city", page.getRequest().getExtra("city"));
+            resultItems.put("source", "蛋壳公寓");
             logger.info("房间标题={}, 价格={}, 户型={}, 楼层={}, 区域={}, 图片={}",
                     title, price, type.replaceAll("户型：", ""), floor.replaceAll("楼层：", ""), area, imageList);
         }
@@ -61,80 +82,59 @@ public class DankeRoomSpider implements PageProcessor {
         return site;
     }
 
-    static ArrayBlockingQueue<ResultItems> queue = new ArrayBlockingQueue<>(1024);
-
-    static Thread dbTask = new Thread(() -> {
-        logger.info("dbTask is start");
-        Connection connection = null;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager
-                    .getConnection("jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC", "root", "root");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        while (!Thread.interrupted()) {
-            try {
-                ResultItems resultItems = queue.take();
-                PreparedStatement preparedStatement = connection.prepareStatement(
-                        "select id from room where title=?");
-                String title = resultItems.get("title");
-                preparedStatement.setString(1, title);
-                ResultSet rs = preparedStatement.executeQuery();
-                if (rs.next()) {
-                    preparedStatement = connection.prepareStatement(
-                            "update room set price=?,image_list=?,update_time=? where id=" + rs.getLong(1));
-                    preparedStatement.setString(1, resultItems.get("price"));
-                    preparedStatement.setString(2, Joiner.on(",").join((List) resultItems.get("imageList")));
-                    preparedStatement.setString(3, DateFormatUtils.format(new Date(), "yyyy-MM-dd HH:mm:ss"));
-                    preparedStatement.executeUpdate();
-                    preparedStatement.close();
-                    rs.close();
-                } else {
-                    preparedStatement = connection.prepareStatement(
-                            "insert into room(title,price,area,type,floor,image_list,create_time,village,subway,source,city) values(?,?,?,?,?,?,?,?,?,?,?)");
-                    preparedStatement.setString(1, title);
-                    preparedStatement.setString(2, resultItems.get("price"));
-                    preparedStatement.setString(3, resultItems.get("area"));
-                    preparedStatement.setString(4, resultItems.get("type"));
-                    preparedStatement.setString(5, resultItems.get("floor"));
-                    preparedStatement.setString(6, Joiner.on(",").join((List) resultItems.get("imageList")));
-                    preparedStatement.setString(7, DateFormatUtils.format(new Date(), "yyyy-MM-dd HH:mm:ss"));
-                    preparedStatement.setString(8, title.split(" ")[1]);
-                    preparedStatement.setString(9, title.split(" ")[0]);
-                    preparedStatement.setString(10, "蛋壳公寓");
-                    preparedStatement.setString(11, resultItems.get("city"));
-                    preparedStatement.execute();
-                    preparedStatement.close();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    });
-
     public static void main(String[] args) {
         new Thread(() -> startSpider()).start();
         Executors.newScheduledThreadPool(1).schedule(() -> {
             logger.info("Scheduled spider task is start");
             startSpider();
         }, 1, TimeUnit.DAYS);
-        dbTask.start();
+        DBconsumer.start();
     }
 
     static void startSpider() {
-        List<String> urlList = Lists.newArrayList();
-        //初始化北京、上海的待爬取的房源数据
-        for (int i = 1; i <= 1000; i++) {
-            urlList.add("https://www.danke.com/room/bj?page=" + i);
-            urlList.add("https://www.danke.com/room/sh?page=" + i);
+        List<String> urlList = Lists.newArrayList(/*"https://www.danke.com/room/bj?page=2"*/);
+        try {
+            InputStream inputStream = HttpClients.createDefault()
+                    .execute(new HttpGet("https://www.danke.com/web-api/base-configure/city-list"))
+                    .getEntity().getContent();
+            String jsonStr = CharStreams.toString(new InputStreamReader(inputStream));
+            List<City> cityList = JSONObject.parseArray(jsonStr).toJavaList(City.class);
+            List<String> cityCodeList = cityList.stream().map(City::getCode).collect(Collectors.toList());
+            cityCodeList = Lists.reverse(cityCodeList);
+            //初始化待爬取城市的房源数据
+            cityCodeList.forEach(cityCode -> {
+                for (int i = 1; i <= 1000; i++) {
+                    urlList.add("https://www.danke.com/room/" + cityCode + "?page=" + i);
+                }
+            });
+        } catch (IOException e) {
+            logger.error("", e);
         }
         Spider.create(new DankeRoomSpider())
                 .addUrl(urlList.toArray(new String[urlList.size()]))
                 .addPipeline((resultItems, task) -> {
                     if (resultItems.get("title") != null)
-                        queue.offer(resultItems);
-                }).thread(16).run();
+                        DBconsumer.queue.offer(resultItems);
+                }).thread(32).run();
+    }
+
+    static class City {
+        private String code, name;
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
     }
 }

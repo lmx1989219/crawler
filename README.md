@@ -3,7 +3,7 @@
 ## 准备工具
 chromedriver、chrome浏览器，一定要版本对应。
 
-编辑chromedriver.exe 搜索关键字cdc
+编辑chromedriver.exe 搜索关键字cdc_
       
       var key = '$cdc_asdjflasutopfhvcZLmcaa_';
 
@@ -17,25 +17,31 @@ webmagic+selenium实现的模拟网页事件
     3.对每一个博客进行点赞+评论
 
     
- ## 蛋壳公寓房源
-sql脚本
- 
-    CREATE TABLE `room` (
-      `id` bigint(20) NOT NULL AUTO_INCREMENT,
-      `city` varchar(255) DEFAULT NULL,
-      `title` varchar(255) DEFAULT NULL,
-      `subway` varchar(255) DEFAULT NULL,
-      `village` varchar(255) DEFAULT NULL,
-      `price` decimal(10,2) DEFAULT NULL,
-      `area` varchar(255) DEFAULT NULL,
-      `type` varchar(255) DEFAULT NULL,
-      `floor` varchar(255) DEFAULT NULL,
-      `image_list` text,
-      `source` varchar(255) DEFAULT NULL,
-      `create_time` datetime DEFAULT NULL,
-      `update_time` datetime DEFAULT NULL,
-      PRIMARY KEY (`id`)
-    ) ENGINE=InnoDB AUTO_INCREMENT=6539 DEFAULT CHARSET=utf8mb4;
-    
-    
+ ## 蛋壳、青客待租房源爬取
+1. 需要执行doc下的sql脚本
+2. 数据差异比较sql
 
+
+    SELECT
+    	sum(
+    		CASE source
+    		WHEN '蛋壳公寓' THEN
+    			1
+    		ELSE
+    			0
+    		END
+    	) AS '蛋壳公寓待租房间数',
+    	sum(
+    		CASE source
+    		WHEN '青客公寓' THEN
+    			1
+    		ELSE
+    			0
+    		END
+    	) AS '青客公寓待租房间数',
+    	ci. NAME AS '城市'
+    FROM
+    	room rom
+    INNER JOIN city ci ON rom.city = ci.`code`
+    GROUP BY
+    	city;
