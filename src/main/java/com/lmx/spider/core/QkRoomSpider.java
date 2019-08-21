@@ -69,11 +69,10 @@ public class QkRoomSpider implements PageProcessor {
     }
 
     public static void main(String[] args) {
-        new Thread(() -> startSpider()).start();
-        Executors.newScheduledThreadPool(1).schedule(() -> {
+        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
             logger.info("Scheduled spider task is start");
             startSpider();
-        }, 1, TimeUnit.DAYS);
+        }, 0, 1, TimeUnit.DAYS);
         DBconsumer.start();
     }
 

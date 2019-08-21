@@ -15,6 +15,8 @@ import us.codecraft.webmagic.processor.PageProcessor;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * csdn博客进行自动点赞+点评
@@ -24,11 +26,11 @@ import java.util.List;
  **/
 public class CsdnBlogSpider implements PageProcessor {
 
-    private Logger logger = LoggerFactory.getLogger(getClass());
+    private static Logger logger = LoggerFactory.getLogger(CsdnBlogSpider.class);
     private Site site = Site.me().setUserAgent("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36")
             .setRetryTimes(0).setSleepTime(500);
     private static ChromeDriver driver;
-    private int endPos = 10;//待爬取的页面数量，可灵活调整
+    private int endPos = 1;//待爬取的页面数量，可灵活调整
     private List<String> replyList = Lists.newArrayList("我只看看不说话，搬个小板凳先占个座...",
             "顶一下老铁", "文章比较新颖，有深度，能看出作者是个狠角色", "沙发");
 
@@ -116,7 +118,10 @@ public class CsdnBlogSpider implements PageProcessor {
         System.setProperty("webdriver.chrome.driver", args[2]);
         CsdnBlogSpider spiderMain = new CsdnBlogSpider();
         spiderMain.mockLogin(args[0], args[1]);
-        Spider.create(spiderMain).addUrl("https://blog.csdn.net/").thread(1).run();
+        Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
+            logger.info("Scheduled spider task is start");
+            Spider.create(spiderMain).addUrl("https://blog.csdn.net/").thread(1).run();
+        }, 0, 10, TimeUnit.MINUTES);
     }
 
     void mockLogin(String username, String pwd) {
