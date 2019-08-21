@@ -50,8 +50,19 @@ webmagic+selenium实现的模拟网页事件
  ## 蛋壳、青客待租房源爬取
 1. 需要执行doc下的sql脚本
 2. 数据差异比较sql
-
-
+````
+    SELECT
+        AVG(price),
+        source,
+        max(price),
+        MIN(price),
+        COUNT(*)
+    FROM
+        `room`
+    GROUP BY
+        source;
+````
+````
     SELECT
     	sum(
     		CASE source
@@ -75,3 +86,4 @@ webmagic+selenium实现的模拟网页事件
     INNER JOIN city ci ON rom.city = ci.`code`
     GROUP BY
     	city;
+````
