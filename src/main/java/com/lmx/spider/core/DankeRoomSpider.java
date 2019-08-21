@@ -92,11 +92,10 @@ public class DankeRoomSpider implements PageProcessor {
     }
 
     static void startSpider() {
-        List<String> urlList = Lists.newArrayList(/*"https://www.danke.com/room/bj?page=2"*/);
-        try {
-            InputStream inputStream = HttpClients.createDefault()
-                    .execute(new HttpGet("https://www.danke.com/web-api/base-configure/city-list"))
-                    .getEntity().getContent();
+        List<String> urlList = Lists.newArrayList();
+        try (InputStream inputStream = HttpClients.createDefault()
+                .execute(new HttpGet("https://www.danke.com/web-api/base-configure/city-list"))
+                .getEntity().getContent()) {
             String jsonStr = CharStreams.toString(new InputStreamReader(inputStream));
             List<City> cityList = JSONObject.parseArray(jsonStr).toJavaList(City.class);
             List<String> cityCodeList = cityList.stream().map(City::getCode).collect(Collectors.toList());
