@@ -1,6 +1,7 @@
 package com.lmx.spider.core;
 
 import com.google.common.collect.Lists;
+import com.lmx.spider.core.driver.ChromeDriverMgr;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
@@ -29,63 +30,46 @@ public class CsdnBlogSpider implements PageProcessor {
     private static Logger logger = LoggerFactory.getLogger(CsdnBlogSpider.class);
     private Site site = Site.me().setUserAgent("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36")
             .setRetryTimes(0).setSleepTime(500);
-    private static ChromeDriver driver;
     private int endPos = 1;//待爬取的页面数量，可灵活调整
     private List<String> replyList = Lists.newArrayList("我只看看不说话，搬个小板凳先占个座...",
             "顶一下老铁", "文章比较新颖，有深度，能看出作者是个狠角色", "沙发");
 
     public void process(Page page) {
         if (!page.getUrl().regex("https://blog.csdn.net/\\w+/article/details/\\w+").match()) {
-            try {
-                Thread.sleep(2000L);
-            } catch (InterruptedException e) {
-                logger.error("", e);
-            }
-            driver.get(page.getUrl().toString());
-            try {
-                Thread.sleep(2000L);
-            } catch (InterruptedException e) {
-                logger.error("", e);
-            }
+            ChromeDriverMgr.sleep(2000L);
+            ChromeDriverMgr.get(page.getUrl().toString());
+            ChromeDriverMgr.sleep(2000L);
             //模拟下拉加载更多数据
             for (int startPos = 1; startPos <= endPos; startPos++) {
-                try {
-                    Thread.sleep(100L);
-                } catch (InterruptedException e) {
-                    logger.error("", e);
-                }
-                driver.executeScript("window.scrollTo(0," + startPos * 500 + ")");
+                ChromeDriverMgr.sleep(100L);
+                ChromeDriverMgr.executeScript("window.scrollTo(0," + startPos * 500 + ")");
             }
             List<String> urlList = Lists.newArrayList();
             //获取当前页博客列表
-            for (WebElement webElement : driver.findElementsByCssSelector("#feedlist_id > li > div > div.title > h2 > a")) {
+            for (WebElement webElement : ChromeDriverMgr.driver.findElementsByCssSelector("#feedlist_id > li > div > div.title > h2 > a")) {
                 urlList.add(webElement.getAttribute("href"));
             }
             page.addTargetRequests(urlList);
             logger.info("待抓取的url个数为{}", urlList.size());
         } else {
             String url = page.getUrl().toString();
-            driver.get(url);
-            try {
-                Thread.sleep(5000L);
-            } catch (InterruptedException e) {
-                logger.error("", e);
-            }
+            ChromeDriverMgr.get(url);
+            ChromeDriverMgr.sleep(5000L);
             try {
                 //已经点赞忽略
-                By.cssSelector(".liked").findElement(driver);
+                By.cssSelector(".liked").findElement(ChromeDriverMgr.driver);
                 logger.info("已经点赞过,blog={}", url);
             } catch (NoSuchElementException e) {
                 try {
                     //点赞
-                    By.cssSelector(".btn-like").findElement(driver).click();
+                    By.cssSelector(".btn-like").findElement(ChromeDriverMgr.driver).click();
                     //展开评论输入框
-                    By.xpath("//*[@id=\"comment_content\"]").findElement(driver).click();
+                    By.xpath("//*[@id=\"comment_content\"]").findElement(ChromeDriverMgr.driver).click();
                     //填充评论输入框
-                    By.xpath("//*[@id=\"comment_content\"]").findElement(driver)
+                    By.xpath("//*[@id=\"comment_content\"]").findElement(ChromeDriverMgr.driver)
                             .sendKeys(replyList.get(Math.abs((int) System.currentTimeMillis() % replyList.size())));
                     //提交评论
-                    By.cssSelector("#commentform > div > div.right-box > input.btn.btn-sm.btn-red.btn-comment").findElement(driver).click();
+                    By.cssSelector("#commentform > div > div.right-box > input.btn.btn-sm.btn-red.btn-comment").findElement(ChromeDriverMgr.driver).click();
                 } catch (Exception ex) {
                     logger.error("", ex);
                 }
@@ -108,31 +92,28 @@ public class CsdnBlogSpider implements PageProcessor {
     public static void main(String[] args) {
         if (args.length < 3)
             throw new RuntimeException("用户名[1]、密码[2]、webdriver[3]路径必须输入");
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                System.err.println("chrome driver is exiting");
-                driver.quit();
-            }
-        });
         System.setProperty("webdriver.chrome.driver", args[2]);
-        CsdnBlogSpider spiderMain = new CsdnBlogSpider();
-        spiderMain.mockLogin(args[0], args[1]);
         Executors.newScheduledThreadPool(1).scheduleAtFixedRate(() -> {
+            ChromeDriverMgr.initDriver();
+            CsdnBlogSpider spiderMain = new CsdnBlogSpider();
+            spiderMain.mockLogin(args[0], args[1]);
             logger.info("Scheduled spider task is start");
             Spider.create(spiderMain).addUrl("https://blog.csdn.net/").thread(1).run();
+            logger.info("start close chrome");
+            //关闭浏览器
+            ChromeDriverMgr.quit();
         }, 0, 10, TimeUnit.MINUTES);
     }
 
-    void mockLogin(String username, String pwd) {
-        ChromeOptions options = new ChromeOptions();
-        //开启开发者模式
-        options.setExperimentalOption("excludeSwitches", Arrays.asList("enable-automation"));
-        driver = new ChromeDriver(options);
-        driver.get("https://passport.csdn.net/login");
-        By.xpath("//*[@id=\"app\"]/div/div/div[1]/div[2]/div[5]/ul/li[2]/a").findElement(driver).click();
-        By.xpath("//*[@id=\"all\"]").findElement(driver).sendKeys(username);
-        By.xpath("//*[@id=\"password-number\"]").findElement(driver).sendKeys(pwd);
-        By.xpath("//*[@id=\"app\"]/div/div/div[1]/div[2]/div[5]/div/div[6]/div/button").findElement(driver).click();
+    static void mockLogin(String username, String pwd) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.err.println("chrome driver is exiting");
+            ChromeDriverMgr.quit();
+        }));
+        ChromeDriverMgr.get("https://passport.csdn.net/login");
+        By.xpath("//*[@id=\"app\"]/div/div/div[1]/div[2]/div[5]/ul/li[2]/a").findElement(ChromeDriverMgr.driver).click();
+        By.xpath("//*[@id=\"all\"]").findElement(ChromeDriverMgr.driver).sendKeys(username);
+        By.xpath("//*[@id=\"password-number\"]").findElement(ChromeDriverMgr.driver).sendKeys(pwd);
+        By.xpath("//*[@id=\"app\"]/div/div/div[1]/div[2]/div[5]/div/div[6]/div/button").findElement(ChromeDriverMgr.driver).click();
     }
 }
