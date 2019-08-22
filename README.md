@@ -87,3 +87,6 @@ webmagic+selenium实现的模拟网页事件
     GROUP BY
     	city;
 ````
+## 腾讯新闻自动刷评
+1. 新闻板块可自己配置
+2. 嵌套iframe遇到的问题（通过switch解决）
