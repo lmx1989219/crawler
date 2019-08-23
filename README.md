@@ -2,6 +2,7 @@
 爬虫程序，基于chromedriver模拟网页事件
 ## 准备工具
 chromedriver、chrome浏览器，一定要版本对应。
+> https://chromedriver.storage.googleapis.com/index.html
         
         v2.46	v71-73
         v2.45	v70-72
