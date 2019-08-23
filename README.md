@@ -49,44 +49,7 @@ webmagic+selenium实现的模拟网页事件
     
  ## 蛋壳、青客待租房源爬取
 1. 需要执行doc下的sql脚本
-2. 数据差异比较sql
-````
-    SELECT
-        AVG(price),
-        source,
-        max(price),
-        MIN(price),
-        COUNT(*)
-    FROM
-        `room`
-    GROUP BY
-        source;
-````
-````
-    SELECT
-    	sum(
-    		CASE source
-    		WHEN '蛋壳公寓' THEN
-    			1
-    		ELSE
-    			0
-    		END
-    	) AS '蛋壳公寓待租房间数',
-    	sum(
-    		CASE source
-    		WHEN '青客公寓' THEN
-    			1
-    		ELSE
-    			0
-    		END
-    	) AS '青客公寓待租房间数',
-    	ci. NAME AS '城市'
-    FROM
-    	room rom
-    INNER JOIN city ci ON rom.city = ci.`code`
-    GROUP BY
-    	city;
-````
+
 ## 腾讯新闻自动刷评
 1. 新闻板块可自己配置
 2. 嵌套iframe遇到的问题（通过switch解决）
