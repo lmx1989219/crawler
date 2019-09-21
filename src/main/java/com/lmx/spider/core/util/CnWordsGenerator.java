@@ -2,6 +2,7 @@ package com.lmx.spider.core.util;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Random;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 名称
@@ -49,5 +50,35 @@ public class CnWordsGenerator {
         }
 
         return str.charAt(0);
+    }
+
+    static Object object = new Object();
+    static ReentrantLock reentrantLock = new ReentrantLock();
+
+    public static void main(String[] args) throws InterruptedException {
+        new Thread(() -> {
+            reentrantLock.lock();
+//            synchronized (object) {
+                try {
+                    Thread.sleep(100000l);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+//            }
+            reentrantLock.unlock();
+        }).start();
+        new Thread(() -> {
+            reentrantLock.lock();
+//            synchronized (object) {
+                try {
+                    Thread.sleep(10000L);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+//            }
+            reentrantLock.unlock();
+        }).start();
+
+        Thread.sleep(100000l);
     }
 }

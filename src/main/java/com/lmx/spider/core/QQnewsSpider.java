@@ -56,6 +56,8 @@ public class QQnewsSpider implements PageProcessor {
         } else {
             String url = page.getUrl().toString();
             ChromeDriverMgr.get(url);
+            String title = By.xpath("/html/body/div[3]/div[1]/h1").findElement(ChromeDriverMgr.driver).getText();
+            String autoReply = title.substring(title.length() - 4, title.length());
             ChromeDriverMgr.sleep(5000L);
             try {
                 //触发评论区加载
@@ -69,7 +71,7 @@ public class QQnewsSpider implements PageProcessor {
                 String pubMsg = String.valueOf(CnWordsGenerator.getRandomChar());
                 //填充评论输入框
                 By.cssSelector("#J_Textarea").findElement(webDriver)
-                        .sendKeys(pubMsg + pubMsg + "...");
+                        .sendKeys(autoReply+"?"/*pubMsg + pubMsg + "..."*/);
                 //提交评论
                 By.cssSelector("#J_PostBtn").findElement(webDriver).click();
             } catch (Exception ex) {
@@ -108,7 +110,7 @@ public class QQnewsSpider implements PageProcessor {
             } catch (Exception e) {
                 logger.error("", e);
             }
-        }, 0, 10, TimeUnit.MINUTES);
+        }, 0, 20, TimeUnit.MINUTES);
     }
 
     void mockLogin(String qq) {

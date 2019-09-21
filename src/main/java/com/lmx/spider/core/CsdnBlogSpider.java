@@ -5,8 +5,6 @@ import com.lmx.spider.core.driver.ChromeDriverMgr;
 import org.openqa.selenium.By;
 import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import us.codecraft.webmagic.Page;
@@ -14,7 +12,6 @@ import us.codecraft.webmagic.Site;
 import us.codecraft.webmagic.Spider;
 import us.codecraft.webmagic.processor.PageProcessor;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -31,8 +28,7 @@ public class CsdnBlogSpider implements PageProcessor {
     private Site site = Site.me().setUserAgent("Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36")
             .setRetryTimes(0).setSleepTime(500);
     private int endPos = 1;//待爬取的页面数量，可灵活调整
-    private List<String> replyList = Lists.newArrayList("我只看看不说话，搬个小板凳先占个座...",
-            "顶一下老铁", "文章比较新颖，有深度，能看出作者是个狠角色", "沙发");
+    private List<String> replyList = Lists.newArrayList("好文", "顶一下老铁", "学习了", "沙发", "小板凳");
 
     public void process(Page page) {
         if (!page.getUrl().regex("https://blog.csdn.net/\\w+/article/details/\\w+").match()) {
@@ -54,7 +50,7 @@ public class CsdnBlogSpider implements PageProcessor {
         } else {
             String url = page.getUrl().toString();
             ChromeDriverMgr.get(url);
-            ChromeDriverMgr.sleep(5000L);
+//            ChromeDriverMgr.sleep(5000L);
             try {
                 //已经点赞忽略
                 By.cssSelector(".liked").findElement(ChromeDriverMgr.driver);

@@ -7,13 +7,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import us.codecraft.webmagic.ResultItems;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
+import java.sql.*;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 一句话描述一下
@@ -24,20 +22,31 @@ import java.util.concurrent.ArrayBlockingQueue;
 public class DBconsumer {
     public static ArrayBlockingQueue<ResultItems> queue = new ArrayBlockingQueue<>(1024);
     private static Logger logger = LoggerFactory.getLogger(QkRoomSpider.class);
+
+    static {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            logger.error("", e);
+        }
+    }
+
     static Thread dbTask = new Thread(() -> {
         logger.info("dbTask is start");
         Connection connection = null;
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager
-                    .getConnection("jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC", "root", "root");
+            connection = getConn();
         } catch (Exception e) {
             logger.error("", e);
         }
 
         while (!Thread.interrupted()) {
             try {
-                ResultItems resultItems = queue.take();
+                ResultItems resultItems = queue.poll(5, TimeUnit.MINUTES);
+                if (resultItems == null) {
+                    connection.createStatement().executeQuery("select 1");
+                    continue;
+                }
                 PreparedStatement preparedStatement = connection.prepareStatement(
                         "select id from room where title=?");
                 String title = resultItems.get("title");
@@ -71,9 +80,20 @@ public class DBconsumer {
                 }
             } catch (Exception e) {
                 logger.error("", e);
+                connection = getConn();
             }
         }
     });
+
+    static Connection getConn() {
+        try {
+            return DriverManager
+                    .getConnection("jdbc:mysql://127.0.0.1:3306/test?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC", "root", "root");
+        } catch (SQLException e1) {
+            logger.error("", e1);
+        }
+        return null;
+    }
 
     public static void start() {
         dbTask.start();
